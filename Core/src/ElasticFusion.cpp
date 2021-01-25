@@ -817,6 +817,27 @@ void ElasticFusion::savePly()
     delete [] mapData;
 }
 
+void ElasticFusion::saveKeyFrames()
+{
+    if(saveFilename.size() == 0) return;
+
+    std::string filename = saveFilename;
+    if(closeLoops) filename.append(".1.frames");
+    else filename.append(".2.frames");
+
+    std::ofstream file;
+    file.open(filename.c_str());
+    std::stringstream ss;
+    for(size_t i = 0; i < ferns.frames.size(); ++i) {
+        ss << ferns.frames[i]->id << " ";
+    }
+
+    file << ss.str();
+    std::cout << "Key frames successed saved to file: " << filename << "\n";
+
+    file.close();
+}
+
 Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f& matrix)
 {
     Eigen::JacobiSVD<Eigen::Matrix3f> svd(matrix, Eigen::ComputeFullV | Eigen::ComputeFullU);

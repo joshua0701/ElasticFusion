@@ -42,7 +42,10 @@ MainController::MainController(int argc, char * argv[])
     }
     else
     {
-        Intrinsics::getInstance(528, 528, 320, 240);
+        // tum dataset used params
+        //Intrinsics::getInstance(528, 528, 320, 240);
+        // realsense record dataset used params
+        Intrinsics::getInstance(605.1909790039062, 604.1069946289062, 312.04180908203125, 231.9102783203125);
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);
@@ -69,10 +72,10 @@ MainController::MainController(int argc, char * argv[])
 #endif
     }
 
-    if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
-    {
+    if(Parse::get().arg(argc, argv, "-p", poseFile) > 0) {
         groundTruthOdometry = new GroundTruthOdometry(poseFile);
     }
+    Parse::get().arg(argc, argv, "-saveframes", frames_dirname);
 
     confidence = 10.0f;
     depth = 3.0f;
@@ -156,6 +159,36 @@ MainController::~MainController()
     }
 }
 
+void MainController::saveFrames(int frameId)
+{
+    std::string filename;
+    filename.append("/home/joshua/info/datas/frames");
+    filename.append("/" + frames_dirname + "_txts");
+    filename.append("/" + std::to_string(frameId) + ".txt");
+
+    std::ofstream file(filename.c_str(), std::ios::out | std::ios::binary);
+    if(!file) {
+        std::cerr << "open the file: " << filename << " error...\n";
+        return;
+    }
+
+    int height = Resolution::getInstance().height();
+    int width  = Resolution::getInstance().width();
+
+    file.write(reinterpret_cast<char *>(logReader->rgb), width * height * 3 * sizeof(unsigned char));
+    file.close();
+
+    if(logReader->currentFrame % 100 == 0) {
+        std::cout << "processed frames: "
+                  << logReader->currentFrame << " / " << logReader->getNumFrames() << std::endl;
+    }
+    if(logReader->currentFrame + 1 == logReader->getNumFrames()) {
+        std::cout << "processed frames: "
+                  << logReader->currentFrame + 1 << " / " << logReader->getNumFrames()
+                  << ", completed!" << std::endl;
+    }
+}
+
 void MainController::loadCalibration(const std::string & filename)
 {
     std::ifstream file(filename);
@@ -166,9 +199,9 @@ void MainController::loadCalibration(const std::string & filename)
     double fx, fy, cx, cy;
 
     std::getline(file, line);
-
+    std::cerr << "file: " << filename << ", intrics: (" << line << ")\n";
     int n = sscanf(line.c_str(), "%lg %lg %lg %lg", &fx, &fy, &cx, &cy);
-
+    std::cerr << "n: " << n << "\n";
     assert(n == 4 && "Ooops, your calibration file should contain a single line with fx fy cx cy!");
 
     Intrinsics::getInstance(fx, fy, cx, cy);
@@ -248,6 +281,12 @@ void MainController::run()
                     logReader->getNext();
                 }
                 TOCK("LogRead");
+
+                if(frames_dirname.size() > 0) {
+                    saveFrames(logReader->currentFrame);
+                    //std::this_thread::sleep_for(std::chrono::microseconds(33333));
+                    continue;
+                }
 
                 if(eFusion->getTick() < start)
                 {
@@ -559,6 +598,9 @@ void MainController::run()
         if(pangolin::Pushed(*gui->save))
         {
             eFusion->savePly();
+
+            // TODO: save key frame to file
+            eFusion->saveKeyFrames();
         }
 
         TOCK("GUI");

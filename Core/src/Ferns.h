@@ -71,6 +71,22 @@ class Ferns
         };
 
         std::vector<Fern> conservatory;
+        const int rgb_delta;
+        const float depth_delta;
+
+        bool accept_rgb(float rgb, float theta) {
+            if(rgb >= theta) {
+                return rgb - theta <= 2 * rgb_delta;
+            }
+            return theta - rgb <= rgb_delta;
+        }
+
+        bool accept_depth(float depth, float theta) {
+            if(depth >= theta) {
+                return depth - theta <= 3 * depth_delta;
+            }
+            return theta - depth <= depth_delta;
+        }
 
         class Frame
         {

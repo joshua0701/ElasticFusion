@@ -248,6 +248,11 @@ class ElasticFusion
         EFUSION_API void savePly();
 
         /**
+          * Saves out a .key frame index file of the current model
+          */
+        EFUSION_API void saveKeyFrames();
+
+        /**
          * Renders a normalised view of the input raw depth for displaying as an OpenGL texture
          * (this is stored under textures[GPUTexture::DEPTH_NORM]
          * @param minVal minimum depth value to render

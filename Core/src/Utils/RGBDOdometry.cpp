@@ -544,10 +544,33 @@ void RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f & trans,
             Eigen::Matrix<double, 6, 1> db_rgbd = b_rgbd.cast<double>();
             Eigen::Matrix<double, 6, 1> db_icp = b_icp.cast<double>();
 
+
+            double wicp = lastICPCount / (lastICPCount + lastRGBCount),
+                   wrgb = 1.0 - wicp;
+
+            if(wicp >= wrgb) {
+                if(abs(wrgb) < 1e-8) {
+                    wicp = wrgb = 1.0;
+                } else {
+                    wicp /= wrgb;
+                    if(wicp > 10.0) wicp = 10.0;
+                    wrgb = 1.0;
+                }
+            } else {
+                if(abs(wicp) < 1e-8) {
+                    wicp = wrgb = 1.0;
+                } else {
+                    wrgb /= wicp;
+                    if(wrgb > 2.5) wrgb = 2.5;
+                    wicp = 1.0;
+                }
+            }
+            std::cout << "wicp, wrgb: " << wicp << ", " << wrgb << "\n";
+
             if(icp && rgb)
             {
                 double w = icpWeight;
-                lastA = dA_rgbd + w * w * dA_icp;
+                lastA = wrgb * dA_rgbd + wicp * w * w * dA_icp;
                 lastb = db_rgbd + w * db_icp;
                 result = lastA.ldlt().solve(lastb);
             }

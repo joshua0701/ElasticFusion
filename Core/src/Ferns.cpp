@@ -21,6 +21,8 @@
 Ferns::Ferns(int n, int maxDepth, const float photoThresh)
  : num(n),
    factor(8),
+   rgb_delta(5),
+   depth_delta(10.0),
    width(Resolution::getInstance().width() / factor),
    height(Resolution::getInstance().height() / factor),
    maxDepth(maxDepth),
@@ -104,21 +106,22 @@ bool Ferns::addFrame(GPUTexture * imageTexture, GPUTexture * vertexTexture, GPUT
     for(int i = 0; i < num; i++)
     {
         unsigned char code = badCode;
+        Fern &ifern = conservatory.at(i);
 
-        if(verts.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) > 0)
+        if(verts.at<Eigen::Vector4f>(ifern.pos(1), ifern.pos(0))(2) > 0)
         {
-            const Eigen::Matrix<unsigned char, 3, 1> & pix = img.at<Eigen::Matrix<unsigned char, 3, 1>>(conservatory.at(i).pos(1), conservatory.at(i).pos(0));
+            const Eigen::Matrix<unsigned char, 3, 1> & pix = img.at<Eigen::Matrix<unsigned char, 3, 1>>(ifern.pos(1), ifern.pos(0));
 
-            code = (pix(0) > conservatory.at(i).rgbd(0)) << 3 |
-                   (pix(1) > conservatory.at(i).rgbd(1)) << 2 |
-                   (pix(2) > conservatory.at(i).rgbd(2)) << 1 |
-                   (int(verts.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) * 1000.0f) > conservatory.at(i).rgbd(3));
+            code = (accept_rgb(pix(0), ifern.rgbd(0))) << 3 |
+                   (accept_rgb(pix(1), ifern.rgbd(1))) << 2 |
+                   (accept_rgb(pix(2), ifern.rgbd(2))) << 1 |
+                    accept_depth((float)verts.at<Eigen::Vector4f>(ifern.pos(1),ifern.pos(0))(2) * 1000.0f,(float)ifern.rgbd(3));
 
             frame->goodCodes++;
 
-            for(size_t j = 0; j < conservatory.at(i).ids[code].size(); j++)
+            for(size_t j = 0; j < ifern.ids[code].size(); j++)
             {
-                coOccurrences[conservatory.at(i).ids[code].at(j)]++;
+                coOccurrences[ifern.ids[code].at(j)]++;
             }
         }
 
@@ -155,13 +158,11 @@ bool Ferns::addFrame(GPUTexture * imageTexture, GPUTexture * vertexTexture, GPUT
         }
 
         frames.push_back(frame);
-
         return true;
     }
     else
     {
         delete frame;
-
         return false;
     }
 }
@@ -187,27 +188,28 @@ Eigen::Matrix4f Ferns::findFrame(std::vector<SurfaceConstraint> & constraints,
     Frame * frame = new Frame(num, 0, Eigen::Matrix4f::Identity(), 0, width * height);
 
     int * coOccurrences = new int[frames.size()];
-
     memset(coOccurrences, 0, sizeof(int) * frames.size());
 
     for(int i = 0; i < num; i++)
     {
         unsigned char code = badCode;
+        Fern &ifern = conservatory.at(i);
 
-        if(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) > 0)
+        if(vertSmall.at<Eigen::Vector4f>(ifern.pos(1), ifern.pos(0))(2) > 0)
         {
-            const Eigen::Matrix<unsigned char, 3, 1> & pix = imgSmall.at<Eigen::Matrix<unsigned char, 3, 1>>(conservatory.at(i).pos(1), conservatory.at(i).pos(0));
+            const Eigen::Matrix<unsigned char, 3, 1> & pix =
+              imgSmall.at<Eigen::Matrix<unsigned char, 3, 1>>(ifern.pos(1), ifern.pos(0));
 
-            code = (pix(0) > conservatory.at(i).rgbd(0)) << 3 |
-                   (pix(1) > conservatory.at(i).rgbd(1)) << 2 |
-                   (pix(2) > conservatory.at(i).rgbd(2)) << 1 |
-                   (int(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) * 1000.0f) > conservatory.at(i).rgbd(3));
+             code = (accept_rgb(pix(0), ifern.rgbd(0))) << 3 |
+                    (accept_rgb(pix(1), ifern.rgbd(1))) << 2 |
+                    (accept_rgb(pix(2), ifern.rgbd(2))) << 1 |
+                     accept_depth((float)vertSmall.at<Eigen::Vector4f>(ifern.pos(1),ifern.pos(0))(2) * 1000.0f,(float)ifern.rgbd(3));
 
             frame->goodCodes++;
 
-            for(size_t j = 0; j < conservatory.at(i).ids[code].size(); j++)
+            for(size_t j = 0; j < ifern.ids[code].size(); j++)
             {
-                coOccurrences[conservatory.at(i).ids[code].at(j)]++;
+                coOccurrences[ifern.ids[code].at(j)]++;
             }
         }
 
@@ -285,7 +287,8 @@ Eigen::Matrix4f Ferns::findFrame(std::vector<SurfaceConstraint> & constraints,
                 if(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) > 0 &&
                    int(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2) * 1000.0f) < maxDepth)
                 {
-                    Eigen::Vector4f worldRawPoint = currPose * Eigen::Vector4f(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(0),
+                    Eigen::Vector4f worldRawPoint =
+                      currPose * Eigen::Vector4f(vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(0),
                                                                                vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(1),
                                                                                vertSmall.at<Eigen::Vector4f>(conservatory.at(i).pos(1), conservatory.at(i).pos(0))(2),
                                                                                1.0f);

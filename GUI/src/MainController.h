@@ -37,7 +37,7 @@ class MainController
 
     private:
         void run();
-
+        void saveFrames(int frameId);
         void loadCalibration(const std::string & filename);
 
         bool good;
@@ -47,8 +47,10 @@ class MainController
         LogReader * logReader;
 
         bool iclnuim;
+
         std::string logFile;
         std::string poseFile;
+        std::string frames_dirname;
 
         float confidence,
               depth,
