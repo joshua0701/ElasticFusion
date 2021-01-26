@@ -104,7 +104,7 @@ RealSenseInterface::RealSenseInterface(int inWidth,int inHeight,int inFps)
   fps(inFps),
   initSuccessful(false)
 {
-  errorText = "Compiled without Intel RealSense library";
+    errorText = "Compiled without Intel RealSense library";
 }
 
 RealSenseInterface::~RealSenseInterface()

@@ -35,9 +35,8 @@ LiveLogReader::LiveLogReader(std::string file, bool flipColors, CameraType type)
     else
       cam = nullptr;
 
-	decompressionBufferDepth = new Bytef[Resolution::getInstance().numPixels() * 2];
-
-	decompressionBufferImage = new Bytef[Resolution::getInstance().numPixels() * 3];
+    decompressionBufferDepth = new Bytef[Resolution::getInstance().numPixels() * 2];
+    decompressionBufferImage = new Bytef[Resolution::getInstance().numPixels() * 3];
 
     if(!cam || !cam->ok())
     {
@@ -66,10 +65,8 @@ LiveLogReader::LiveLogReader(std::string file, bool flipColors, CameraType type)
 LiveLogReader::~LiveLogReader()
 {
     delete [] decompressionBufferDepth;
-
     delete [] decompressionBufferImage;
-
-	delete cam;
+    delete cam;
 }
 
 void LiveLogReader::getNext()
@@ -106,13 +103,13 @@ void LiveLogReader::getNext()
     imageSize = Resolution::getInstance().numPixels() * 3;
     depthSize = Resolution::getInstance().numPixels() * 2;
 
-    if(flipColors)
-    {
-        for(int i = 0; i < Resolution::getInstance().numPixels() * 3; i += 3)
-        {
+    if(flipColors) {
+        for(int i = 0; i < Resolution::getInstance().numPixels() * 3; i += 3) {
             std::swap(rgb[i + 0], rgb[i + 2]);
         }
     }
+
+    currentFrame++;
 }
 
 const std::string LiveLogReader::getFile()

@@ -547,23 +547,17 @@ void RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f & trans,
 
             double wicp = lastICPCount / (lastICPCount + lastRGBCount),
                    wrgb = 1.0 - wicp;
-
-            if(wicp >= wrgb) {
-                if(abs(wrgb) < 1e-8) {
-                    wicp = wrgb = 1.0;
-                } else {
-                    wicp /= wrgb;
-                    if(wicp > 10.0) wicp = 10.0;
-                    wrgb = 1.0;
-                }
+            if(abs(wicp) < 1e-3 || abs(wrgb) < 1e-3) {
+                wicp = 1.0;
+                wrgb = 1.0;
+            } else if(wicp >= wrgb) {
+                wicp /= wrgb;
+                if(wicp > 10.0) wicp = 10.0;
+                wrgb = 1.0;
             } else {
-                if(abs(wicp) < 1e-8) {
-                    wicp = wrgb = 1.0;
-                } else {
-                    wrgb /= wicp;
-                    if(wrgb > 2.5) wrgb = 2.5;
-                    wicp = 1.0;
-                }
+                wrgb /= wicp;
+                if(wrgb > 2.5) wrgb = 2.5;
+                wicp = 1.0;
             }
             std::cout << "wicp, wrgb: " << wicp << ", " << wrgb << "\n";
 

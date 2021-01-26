@@ -26,7 +26,8 @@ MainController::MainController(int argc, char * argv[])
    logReader(0),
    framesToSkip(0),
    resetButton(false),
-   resizeStream(0)
+   resizeStream(0),
+   maxFrames(5000)
 {
     std::string empty;
     iclnuim = Parse::get().arg(argc, argv, "-icl", empty) > -1;
@@ -34,39 +35,31 @@ MainController::MainController(int argc, char * argv[])
     std::string calibrationFile;
     Parse::get().arg(argc, argv, "-cal", calibrationFile);
 
-    Resolution::getInstance(640, 480);
 
-    if(calibrationFile.length())
-    {
+    if(calibrationFile.length()) {
         loadCalibration(calibrationFile);
-    }
-    else
-    {
-        // tum dataset used params
-        //Intrinsics::getInstance(528, 528, 320, 240);
-        // realsense record dataset used params
-        Intrinsics::getInstance(605.1909790039062, 604.1069946289062, 312.04180908203125, 231.9102783203125);
+    } else {
+        Intrinsics::getInstance(528, 528, 320, 240);
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);
-
     if(logFile.length())
     {
+        Resolution::getInstance(640, 480);
         logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-    }
-    else
-    {
+    } else {
+#if 1
+        Resolution::getInstance(512, 424);
         bool flipColors = Parse::get().arg(argc,argv,"-f",empty) > -1;
         logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::OpenNI2);
-
         good = ((LiveLogReader *)logReader)->cam->ok();
+#endif
 
 #ifdef WITH_REALSENSE
         if(!good)
         {
           delete logReader;
           logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::RealSense);
-
           good = ((LiveLogReader *)logReader)->cam->ok();
         }
 #endif
@@ -76,6 +69,12 @@ MainController::MainController(int argc, char * argv[])
         groundTruthOdometry = new GroundTruthOdometry(poseFile);
     }
     Parse::get().arg(argc, argv, "-saveframes", frames_dirname);
+
+    empty = "";
+    Parse::get().arg(argc, argv, "-maxf", empty);
+    if(empty.size() > 0) {
+        sscanf(empty.c_str(), "%d", &maxFrames);
+    }
 
     confidence = 10.0f;
     depth = 3.0f;
@@ -191,15 +190,17 @@ void MainController::saveFrames(int frameId)
 
 void MainController::loadCalibration(const std::string & filename)
 {
-    std::ifstream file(filename);
+    std::ifstream file(filename.c_str());
     std::string line;
-
-    assert(!file.eof());
+    if(!file) {
+        std::cerr << "open the file: " << filename << " error...\n";
+        return;
+    }
 
     double fx, fy, cx, cy;
-
     std::getline(file, line);
-    std::cerr << "file: " << filename << ", intrics: (" << line << ")\n";
+    std::cerr << "file: " << filename << ", intrics: [" << line << "]\n";
+
     int n = sscanf(line.c_str(), "%lg %lg %lg %lg", &fx, &fy, &cx, &cy);
     std::cerr << "n: " << n << "\n";
     assert(n == 4 && "Ooops, your calibration file should contain a single line with fx fy cx cy!");
@@ -284,8 +285,14 @@ void MainController::run()
 
                 if(frames_dirname.size() > 0) {
                     saveFrames(logReader->currentFrame);
-                    //std::this_thread::sleep_for(std::chrono::microseconds(33333));
                     continue;
+                }
+
+                if(logReader->currentFrame > maxFrames) {
+                    eFusion->savePly();
+                    eFusion->saveKeyFrames();
+                    std::cout << "completed frames: " << logReader->currentFrame << "\n";
+                    return;
                 }
 
                 if(eFusion->getTick() < start)
@@ -313,6 +320,7 @@ void MainController::run()
                 }
 
                 eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
+                std::cout << "processd frames: " << logReader->currentFrame << "\n";
 
                 if(currentPose)
                 {

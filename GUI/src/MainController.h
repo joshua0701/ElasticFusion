@@ -63,7 +63,8 @@ class MainController
         int timeDelta,
             icpCountThresh,
             start,
-            end;
+            end,
+            maxFrames;
 
         bool fillIn,
              openLoop,
