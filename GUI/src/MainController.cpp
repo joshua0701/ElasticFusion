@@ -47,7 +47,9 @@ MainController::MainController(int argc, char * argv[])
     {
         Resolution::getInstance(640, 480);
         logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-    } else {
+    }
+    else
+    {
 #if 1
         Resolution::getInstance(512, 424);
         bool flipColors = Parse::get().arg(argc,argv,"-f",empty) > -1;
@@ -58,9 +60,9 @@ MainController::MainController(int argc, char * argv[])
 #ifdef WITH_REALSENSE
         if(!good)
         {
-          delete logReader;
-          logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::RealSense);
-          good = ((LiveLogReader *)logReader)->cam->ok();
+            delete logReader;
+            logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::RealSense);
+            good = ((LiveLogReader *)logReader)->cam->ok();
         }
 #endif
     }
